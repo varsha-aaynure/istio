@@ -1,0 +1,19 @@
+language: go
+
+go: 1.17.x
+
+arch: ppc64le
+
+dist: focal
+
+install:  apt install -y  make wget tar git gcc make
+
+before_install: 
+  - echo "Validating istio upstream repo"
+  
+script: 
+  - make
+  - make test
+
+after_success:
+    - echo "Completed execution"
