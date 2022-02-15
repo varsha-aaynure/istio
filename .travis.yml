@@ -8,6 +8,9 @@ dist: focal
 
 install:  sudo apt install -y  make wget tar git gcc make
 
+env:
+  global: BUILD_WITH_CONTAINER=0
+
 before_install: 
   - echo "Validating istio upstream repo"
   
