@@ -6,7 +6,7 @@ arch: ppc64le
 
 dist: focal
 
-install:  apt install -y  make wget tar git gcc make
+install:  sudo apt install -y  make wget tar git gcc make
 
 before_install: 
   - echo "Validating istio upstream repo"
