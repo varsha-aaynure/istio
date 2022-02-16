@@ -11,12 +11,11 @@ env:
 
 before_install: 
   - echo "Validating istio upstream repo"
-  - sudo apt-get update
   
 install: sudo apt install -y gcc make
 
 script: 
-  - travis_wait 10 make
+  - travis_wait make
   - make test
 
 after_success:
