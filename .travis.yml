@@ -15,8 +15,8 @@ before_install:
   - echo "Validating istio upstream repo"
   
 script: 
-  - make
-  - make test
+  - travis_wait make
+  - travis_wait make test
 
 after_success:
     - echo "Completed execution"
