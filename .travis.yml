@@ -14,9 +14,10 @@ before_install:
   
 install:
   - sudo apt install -y gcc make
-  - travis_wait make
 
-script: 
+
+script:
+  - travis_wait 20 make
   - make test
 
 after_success:
