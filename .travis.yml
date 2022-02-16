@@ -6,17 +6,18 @@ arch: ppc64le
 
 dist: focal
 
-install:  sudo apt install -y  make wget tar git gcc make
-
 env:
   global: BUILD_WITH_CONTAINER=0
 
 before_install: 
   - echo "Validating istio upstream repo"
+  - sudo apt-get update
   
+install: sudo apt install -y gcc make
+
 script: 
-  - travis_wait make
-  - travis_wait make test
+  - travis_wait 10 make
+  - make test
 
 after_success:
     - echo "Completed execution"
