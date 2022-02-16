@@ -13,7 +13,7 @@ before_install:
   - echo "Validating istio upstream repo"
   
 install:
-  - sudo apt install -y gcc make gcc-c++
+  - sudo apt install -y make gcc-c++
 
 
 script:
