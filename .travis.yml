@@ -13,8 +13,8 @@ before_install:
   - echo "Validating istio upstream repo"
   
 install:
-   - sudo apt update && install -y make gcc c++
-
+   - sudo apt update
+   - sudo install -y make gcc c++
 script:
   - travis_wait 40 make
   # - make test
