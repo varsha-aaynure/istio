@@ -11,7 +11,6 @@ env:
 
 before_install: 
   - echo "Validating istio upstream repo"
-  - sudo apt update
   
 install:
    - sudo install -y make gcc 
