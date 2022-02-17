@@ -14,7 +14,7 @@ before_install:
   
 install:
    - sudo apt update
-   - sudo apt install -y make gcc c++ 
+   - sudo apt install -y make gcc 
 script:
   - travis_wait 40 make
   # - make test
