@@ -855,7 +855,7 @@ func useClientProtocolCases(apps *EchoDeployments) []TrafficTestCase {
 	cases = append(cases,
 		TrafficTestCase{
 			name:   "use client protocol with h2",
-			config: useClientProtocolDestinationRule("use-client-protocol-h2", destination.Config().Service),
+			config: useClientProtocolDestinationRule(destination.Config().Service),
 			call:   client[0].CallWithRetryOrFail,
 			opts: echo.CallOptions{
 				Target:   destination,
@@ -871,7 +871,7 @@ func useClientProtocolCases(apps *EchoDeployments) []TrafficTestCase {
 		},
 		TrafficTestCase{
 			name:   "use client protocol with h1",
-			config: useClientProtocolDestinationRule("use-client-protocol-h1", destination.Config().Service),
+			config: useClientProtocolDestinationRule(destination.Config().Service),
 			call:   client[0].CallWithRetryOrFail,
 			opts: echo.CallOptions{
 				PortName: "http",
@@ -1305,6 +1305,150 @@ spec:
 				}
 			},
 		},
+		{
+			// https://github.com/istio/istio/issues/37196
+			name:             "client protocol - http1",
+			targetFilters:    singleTarget,
+			workloadAgnostic: true,
+			viaIngress:       true,
+			config: `apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: gateway
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - "*"
+---
+` + httpVirtualServiceTmpl,
+			opts: echo.CallOptions{
+				Count: 1,
+				Port: &echo.Port{
+					Protocol: protocol.HTTP,
+				},
+				Validator: echo.And(echo.ExpectOK(), echo.ExpectKey("Proto", "HTTP/1.1")),
+			},
+			setupOpts: fqdnHostHeader,
+			templateVars: func(_ echo.Callers, dests echo.Instances) map[string]interface{} {
+				dest := dests[0]
+				return map[string]interface{}{
+					"Gateway":            "gateway",
+					"VirtualServiceHost": dest.Config().ClusterLocalFQDN(),
+					"Port":               FindPortByName("auto-http").ServicePort,
+				}
+			},
+		},
+		{
+			// https://github.com/istio/istio/issues/37196
+			name:             "client protocol - http2",
+			targetFilters:    singleTarget,
+			workloadAgnostic: true,
+			viaIngress:       true,
+			config: `apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: gateway
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - "*"
+---
+` + httpVirtualServiceTmpl,
+			opts: echo.CallOptions{
+				HTTP2: true,
+				Count: 1,
+				Port: &echo.Port{
+					Protocol: protocol.HTTP,
+				},
+				Validator: echo.And(
+					echo.ExpectOK(),
+					// Gateway doesn't implicitly use downstream
+					echo.ExpectKey("Proto", "HTTP/1.1"),
+					// Regression test; if this is set it means the inbound sideacr is treating it as TCP
+					echo.ExpectKey("X-Envoy-Peer-Metadata", ""),
+				),
+			},
+			setupOpts: fqdnHostHeader,
+			templateVars: func(_ echo.Callers, dests echo.Instances) map[string]interface{} {
+				dest := dests[0]
+				return map[string]interface{}{
+					"Gateway":            "gateway",
+					"VirtualServiceHost": dest.Config().ClusterLocalFQDN(),
+					"Port":               FindPortByName("auto-http").ServicePort,
+				}
+			},
+		},
+	}
+	for _, port := range []string{"auto-http", "http", "http2"} {
+		for _, h2 := range []bool{true, false} {
+			port, h2 := port, h2
+			protoName := "http1"
+			expectedProto := "HTTP/1.1"
+			if h2 {
+				protoName = "http2"
+				expectedProto = "HTTP/2.0"
+			}
+
+			cases = append(cases,
+				TrafficTestCase{
+					// https://github.com/istio/istio/issues/37196
+					name:             fmt.Sprintf("client protocol - %v use client with %v", protoName, port),
+					targetFilters:    singleTarget,
+					workloadAgnostic: true,
+					viaIngress:       true,
+					config: `apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: gateway
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - "*"
+---
+` + httpVirtualServiceTmpl + useClientProtocolDestinationRuleTmpl,
+					opts: echo.CallOptions{
+						HTTP2: h2,
+						Count: 1,
+						Port: &echo.Port{
+							Protocol: protocol.HTTP,
+						},
+						Validator: echo.And(
+							echo.ExpectOK(),
+							// We did configure to use client protocol
+							echo.ExpectKey("Proto", expectedProto),
+							// Regression test; if this is set it means the inbound sidecar is treating it as TCP
+							echo.ExpectKey("X-Envoy-Peer-Metadata", ""),
+						),
+					},
+					setupOpts: fqdnHostHeader,
+					templateVars: func(_ echo.Callers, dests echo.Instances) map[string]interface{} {
+						dest := dests[0]
+						return map[string]interface{}{
+							"Gateway":            "gateway",
+							"VirtualServiceHost": dest.Config().ClusterLocalFQDN(),
+							"Port":               FindPortByName(port).ServicePort,
+						}
+					},
+				})
+		}
 	}
 
 	for _, proto := range []protocol.Instance{protocol.HTTP, protocol.HTTPS} {
@@ -2555,13 +2699,12 @@ spec:
 `, app, app, mode)
 }
 
-func useClientProtocolDestinationRule(name, app string) string {
-	return fmt.Sprintf(`apiVersion: networking.istio.io/v1beta1
+const useClientProtocolDestinationRuleTmpl = `apiVersion: networking.istio.io/v1beta1
 kind: DestinationRule
 metadata:
-  name: %s
+  name: use-client-protocol
 spec:
-  host: %s
+  host: {{.VirtualServiceHost}}
   trafficPolicy:
     tls:
       mode: DISABLE
@@ -2569,7 +2712,10 @@ spec:
       http:
         useClientProtocol: true
 ---
-`, name, app)
+`
+
+func useClientProtocolDestinationRule(app string) string {
+	return tmpl.MustEvaluate(useClientProtocolDestinationRuleTmpl, map[string]string{"VirtualServiceHost": app})
 }
 
 func idletimeoutDestinationRule(name, app string) string {
