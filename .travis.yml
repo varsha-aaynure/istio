@@ -13,7 +13,7 @@ before_install:
   - echo "Validating istio upstream repo"
   
 install:
-   - sudo install -y make gcc 
+   - sudo install make gcc -y
 script:
   - travis_wait 40 make
   # - make test
