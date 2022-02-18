@@ -17,7 +17,7 @@ install:
    - sudo apt install -y make gcc 
 script:
   - travis_wait 40 make
-  # - make test
+  # - travis_wait 40 make test
 
 after_success:
     - echo "Completed execution"
