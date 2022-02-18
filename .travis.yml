@@ -1,4 +1,4 @@
-sudo: false
+sudo: ture
 language: go
 go: 1.17.5
 arch: ppc64le
