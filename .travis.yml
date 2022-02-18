@@ -1,23 +1,15 @@
 language: go
-
 go: 1.17.5
-
 arch: ppc64le
-
+os: linux
 dist: focal
 
 env:
-  global: BUILD_WITH_CONTAINER=0
+        - PATH="$PATH:/usr/local/go/bin"
+        - BUILD_WITH_CONTAINER=0
 
-before_install: 
-  - echo "Validating istio upstream repo"
-  
-install:
-   - sudo apt update
-   - sudo apt install -y make gcc docker
 script:
-  - travis_wait 40 make
-  # - travis_wait 40 make test
+        - make
+        - make test
+        - SCRIPT_PID=$!;while ps -p $SCRIPT_PID > /dev/null;do echo "$SCRIPT_PID is running"; sleep 300; done; wait $SCRIPT_PID; my_pid_status=$?; travis_terminate $my_pid_status
 
-after_success:
-    - echo "Completed execution"
