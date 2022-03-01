@@ -29,6 +29,7 @@ import (
 	"istio.io/istio/pkg/test/framework/components/echo"
 	"istio.io/istio/pkg/test/framework/components/echo/echoboot"
 	"istio.io/istio/pkg/test/framework/components/echo/echotest"
+	"istio.io/istio/pkg/test/framework/components/echo/echotypes"
 	"istio.io/istio/pkg/test/framework/components/istio"
 	"istio.io/istio/pkg/test/framework/components/namespace"
 	"istio.io/istio/pkg/test/framework/resource"
@@ -176,7 +177,7 @@ func MustReadCert(f string) string {
 }
 
 func SetupApps(ctx resource.Context, i istio.Instance, apps *EchoDeployments, buildVM bool) error {
-	if ctx.Settings().SkipVM {
+	if ctx.Settings().Skip(echotypes.VM) {
 		buildVM = false
 	}
 	var err error
@@ -323,15 +324,6 @@ func IsMultiversion() echo.Matcher {
 			}
 		}
 		return matchIstio && matchLegacy
-	}
-}
-
-// CheckExistence skips the test if any instance is not available.
-func CheckExistence(ctx framework.TestContext, instances ...echo.Instances) {
-	for _, inst := range instances {
-		if inst == nil || len(inst) == 0 {
-			ctx.Skip()
-		}
 	}
 }
 
